@@ -26,3 +26,6 @@ for f in tqdm(flist):
             p.kill()
         p_list = list()
         p_list.append(Popen(cmd, shell=True, stdout=DEVNULL, stderr=DEVNULL))
+for p in p_list:
+    p.wait()
+    p.kill()

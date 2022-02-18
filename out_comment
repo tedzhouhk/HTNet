@@ -1,0 +1,5 @@
+line 1: throughput # of AP+STA
+line 2: airtime (AP separated by ';', use average of all channels)
+line 3: rssi of AP+STA
+line 4: interference, APxAP
+line 5: sinr of AP+STA

@@ -20,20 +20,44 @@ def check_valid(prefix, i, fn):
         return False
     return True
 
-def compute_dist(df, ap_map, sta_map):
+def get_dist(df, ap_map, sta_map):
     ap_x = torch.zeros(len(ap_map))
     ap_y = torch.zeros(len(ap_map))
     sta_x = torch.zeros(len(sta_map))
     sta_y = torch.zeros(len(sta_map))
-    for r in df.rows:
+    for _, r in df.iterrows():
         nc = r['node_code']
         if nc.startswith('A'):
             ap_x[ap_map[nc]] = float(r['x(m)'])
             ap_y[ap_map[nc]] = float(r['y(m)'])
         else:
-            sta_x[ap_map[nc]] = float(r['x(m)'])
-            sta_y[ap_map[nc]] = float(r['y(m)'])
+            sta_x[sta_map[nc]] = float(r['x(m)'])
+            sta_y[sta_map[nc]] = float(r['y(m)'])
     # compute ap-ap and ap-sta distance
+    ap_loc = torch.stack((ap_x, ap_y), dim=1)
+    sta_loc = torch.stack((sta_x, sta_y), dim=1)
+    return ap_x, ap_y, sta_x, sta_y, torch.cdist(ap_loc, ap_loc), torch.cdist(ap_loc, sta_loc)
+
+def get_channel(df, ap_map, sta_map):
+    ap_pchannel = torch.zeros((len(ap_map), 8))
+    ap_channel = torch.zeros((len(ap_map), 8))
+    sta_pchannel = torch.zeros((len(sta_map), 8))
+    sta_channel = torch.zeros((len(sta_map), 8))
+    for _, r in df.iterrows():
+        nc = r['node_code']
+        pc = r['primary_channel']
+        minc = r['min_channel_allowed']
+        maxc = r['max_channel_allowed']
+        if nc.startswith('A'):
+            ap_pchannel[ap_map[nc]][pc] = 1
+            ap_channel[ap_map[nc]][minc:maxc + 1] = 1
+        else:
+            sta_pchannel[sta_map[nc]][pc] = 1
+            sta_channel[sta_map[nc]][minc:maxc + 1] = 1
+    return ap_pchannel, ap_channel, sta_pchannel, sta_channel
+
+def get_simulated_result(df, ap_map, sta_map, out_fn):
+    
 
 # setup 1
 valid_fn = dict()
@@ -68,8 +92,12 @@ for fn in tqdm(valid_fn):
         ap_mask = torch.zeros(len(ap_map), 1, dtype = torch.bool)
         sta_mask = torch.zeros(len(sta_map), 1, dtype = torch.bool)
         ap_throughput = torch.zeros(len(ap_map), 1)
-        sta_throughput = torch.zeros(len(sta_throughput), 1)
+        sta_throughput = torch.zeros(len(sta_map), 1)
         df = pd.read_csv('data/setup1/raw/{}_{}_{}.csv'.format(i, j, raw_fn), sep=';')
-        ap_ap_dist, ap_sta_dist = compute_dist(pd, ap_map, sta_map)
+        ap_x, ap_y, sta_x, sta_y, ap_ap_dist, ap_sta_dist = get_dist(df, ap_map, sta_map)
+        ap_pchannel, ap_channel, sta_pchannel, sta_channel = get_channel(df, ap_map, sta_map)
+        sta_throughput, ap_throughput, sta_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter = get_simulated_result(df, ap_map, sta_map, 'data/setup1/raw/{}_{}_{}.out'.format(i, j, raw_fn))
+        ap_ap_edge_src = list()
+        ap_sta_edge_src = list()
+        import pdb; pdb.set_trace()
 
-    import pdb; pdb.set_trace()

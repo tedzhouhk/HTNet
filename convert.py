@@ -57,7 +57,43 @@ def get_channel(df, ap_map, sta_map):
     return ap_pchannel, ap_channel, sta_pchannel, sta_channel
 
 def get_simulated_result(df, ap_map, sta_map, out_fn):
-    
+    sta_throughput = torch.zeros(len(sta_map))
+    ap_throughput = torch.zeros(len(ap_map))
+    ap_airtime = torch.zeros(len(ap_map))
+    sta_sinr = torch.zeros(len(sta_map))
+    ap_sta_rssi = torch.zeros((len(ap_map), len(sta_map)))
+    ap_ap_inter = torch.zeros((len(ap_map), len(ap_map)))
+    with open(out_fn, 'r') as f:
+        f.readline()
+        throughput = f.readline().strip('{}\n').split(',')
+        airtime_raw = f.readline().strip('{}\n')[:-1].split(';')
+        airtime = list()
+        for ar in airtime_raw:
+            split_rar = ar.split(',')
+            split_ar = [float(x) for x in split_rar]
+            airtime.append(sum(split_ar) / len(split_ar))
+        rssi = f.readline().strip('{}\n').split(',')
+        inter = list()
+        for _ in range(len(ap_map)):
+            inter.append(f.readline().strip('{}\n;').split(','))
+        sinr = f.readline().strip('{}\n').split(',')
+    ap_neighbors_nc = df[df['node_type']==0]['node_code'].tolist()
+    ap_neighbors = [ap_map[x] for x in ap_neighbors_nc]
+    curr_ap = 0
+    for i, r in df.iterrows():
+        nc = r['node_code']
+        if nc.startswith('A'):
+            ap_throughput[ap_map[nc]] = float(throughput[i])
+            ap_airtime[ap_map[nc]] = float(airtime[curr_ap])
+            for j, ap in enumerate(ap_neighbors):
+                ap_ap_inter[ap_map[nc]][ap] = float(inter[curr_ap][j])
+            curr_ap += 1
+        else:
+            sta_throughput[sta_map[nc]] = float(throughput[i])
+            sta_sinr[sta_map[nc]] = float(sinr[i])
+            ap = ap_map[df[(df['node_type'] == 0) & (df['wlan_code'] == r['wlan_code'])]['node_code'].tolist()[0]]
+            ap_sta_rssi[ap][sta_map[nc]] = float(rssi[i])
+    return sta_throughput, ap_throughput, ap_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter
 
 # setup 1
 valid_fn = dict()
@@ -96,7 +132,7 @@ for fn in tqdm(valid_fn):
         df = pd.read_csv('data/setup1/raw/{}_{}_{}.csv'.format(i, j, raw_fn), sep=';')
         ap_x, ap_y, sta_x, sta_y, ap_ap_dist, ap_sta_dist = get_dist(df, ap_map, sta_map)
         ap_pchannel, ap_channel, sta_pchannel, sta_channel = get_channel(df, ap_map, sta_map)
-        sta_throughput, ap_throughput, sta_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter = get_simulated_result(df, ap_map, sta_map, 'data/setup1/raw/{}_{}_{}.out'.format(i, j, raw_fn))
+        sta_throughput, ap_throughput, ap_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter = get_simulated_result(df, ap_map, sta_map, 'data/setup1/raw/{}_{}_{}.out'.format(i, j, raw_fn))
         ap_ap_edge_src = list()
         ap_sta_edge_src = list()
         import pdb; pdb.set_trace()

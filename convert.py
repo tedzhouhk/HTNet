@@ -1,6 +1,8 @@
 import os
 import torch
 import dgl
+import pickle
+import random
 import pandas as pd
 import numpy as np
 import pandas as pd
@@ -108,10 +110,20 @@ print('Total training samples:', len(valid_fn))
 
 if not os.path.exists('data/setup1/processed'):
     os.mkdir('data/setup1/processed')
-for fn in tqdm(valid_fn):
-    [i, raw_fn] = fn.split('!')
+
+tot_idx = list(range(len(valid_fn)))
+random.shuffle(tot_idx)
+train_idx = set(tot_idx[:int(len(valid_fn) * 0.6)])
+valid_idx = set(tot_idx[int(len(valid_fn) * 0.6):int(len(valid_fn) * 0.8)])
+test_idx = set(tot_idx[int(len(valid_fn) * 0.8):])
+curr_train = 0
+curr_valid = 0
+curr_test = 0
+
+for fn_idx, fn in tqdm(enumerate(valid_fn), total=len(valid_fn)):
+    [ii, raw_fn] = fn.split('!')
     # get AP/STA ids
-    df = pd.read_csv('data/setup1/raw/{}_0_{}.csv'.format(i, raw_fn), sep=';')
+    df = pd.read_csv('data/setup1/raw/{}_0_{}.csv'.format(ii, raw_fn), sep=';')
     ap_map = dict()
     sta_map = dict()
     for nc in df['node_code'].tolist():
@@ -119,21 +131,94 @@ for fn in tqdm(valid_fn):
             ap_map[nc] = len(ap_map)
         else:
             sta_map[nc] = len(sta_map)
+    ap_mask = torch.zeros((len(ap_map), 1), dtype = torch.bool)
+    sta_mask = torch.zeros((len(sta_map), 1), dtype = torch.bool)
+    moving_idxs = pickle.load(open('data/setup1/raw/{}_{}.pkl'.format(ii, raw_fn), 'rb'))
+    for idx in moving_idxs:
+        sta_mask[sta_map[df.at[idx,'node_code']]] = 1
     graphs = list()
     for j in range(num_snapshots):
-        ap_feats = list()
-        sta_feats = list()
-        e_ap_feats = list()
-        e_sta_feats = list()
-        ap_mask = torch.zeros(len(ap_map), 1, dtype = torch.bool)
-        sta_mask = torch.zeros(len(sta_map), 1, dtype = torch.bool)
-        ap_throughput = torch.zeros(len(ap_map), 1)
-        sta_throughput = torch.zeros(len(sta_map), 1)
-        df = pd.read_csv('data/setup1/raw/{}_{}_{}.csv'.format(i, j, raw_fn), sep=';')
+        df = pd.read_csv('data/setup1/raw/{}_{}_{}.csv'.format(ii, j, raw_fn), sep=';')
         ap_x, ap_y, sta_x, sta_y, ap_ap_dist, ap_sta_dist = get_dist(df, ap_map, sta_map)
         ap_pchannel, ap_channel, sta_pchannel, sta_channel = get_channel(df, ap_map, sta_map)
-        sta_throughput, ap_throughput, ap_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter = get_simulated_result(df, ap_map, sta_map, 'data/setup1/raw/{}_{}_{}.out'.format(i, j, raw_fn))
-        ap_ap_edge_src = list()
-        ap_sta_edge_src = list()
-        import pdb; pdb.set_trace()
+        sta_throughput, ap_throughput, ap_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter = get_simulated_result(df, ap_map, sta_map, 'data/setup1/raw/{}_{}_{}.out'.format(ii, j, raw_fn))
 
+        ap_throughput = ap_throughput.unsqueeze(-1)
+        sta_throughput = sta_throughput.unsqueeze(-1)
+
+        ap_feat = torch.zeros((len(ap_map), 21))
+        for i in range(len(ap_map)):
+            ap_feat[i][1] = ap_x[i] / 100
+            ap_feat[i][2] = ap_y[i] / 100
+            ap_feat[i][3:11] = ap_pchannel[i]
+            ap_feat[i][11:19] = ap_channel[i]
+            ap_feat[i][19] = ap_airtime[i] / 100
+        
+        sta_feat = torch.zeros((len(sta_map), 21))
+        sta_feat[:,0] = 1
+        for i in range(len(sta_map)):
+            sta_feat[i][1] = sta_x[i] / 100
+            sta_feat[i][2] = sta_y[i] / 100
+            sta_feat[i][3:11] = sta_pchannel[i]
+            sta_feat[i][11:19] = sta_channel[i]
+            sta_feat[i][20] = sta_sinr[i] / 100
+
+        ap_ap_edge_src = torch.zeros(len(ap_map) * (len(ap_map) - 1), dtype=torch.int64)
+        ap_ap_edge_dst = torch.zeros(len(ap_map) * (len(ap_map) - 1), dtype=torch.int64)
+        ap_ap_edge_feat = torch.zeros((ap_ap_edge_src.shape[0]), 4)
+        ap_ap_edge_feat[:,0] = 1
+        curr_e = 0
+        for i in range(len(ap_map)):
+            for j in range(len(ap_map)):
+                if i != j:
+                    ap_ap_edge_src[curr_e] = i
+                    ap_ap_edge_dst[curr_e] = j
+                    ap_ap_edge_feat[curr_e][1] = ap_ap_dist[i][j] / 100
+                    ap_ap_edge_feat[curr_e][3] = ap_ap_inter[i][j] / 100
+                    curr_e += 1
+
+        ap_sta_edge_src = torch.zeros(len(sta_map), dtype=torch.int64)
+        ap_sta_edge_dst = torch.zeros(len(sta_map), dtype=torch.int64)
+        ap_sta_edge_feat = torch.zeros((len(sta_map), 4))
+        sta_ap_edge_src = torch.zeros(len(sta_map), dtype=torch.int64)
+        sta_ap_edge_dst = torch.zeros(len(sta_map), dtype=torch.int64)
+        sta_ap_edge_feat = torch.zeros((len(sta_map), 4))
+        curr_e = 0
+        for _, r in df.iterrows():
+            if r['node_type'] == 1:
+                sta_idx = sta_map[r['node_code']]
+                ap_idx = ap_map[df[(df['node_type'] == 0) & (df['wlan_code'] == r['wlan_code'])]['node_code'].tolist()[0]]
+                ap_sta_edge_src[curr_e] = ap_idx
+                ap_sta_edge_dst[curr_e] = sta_idx
+                sta_ap_edge_src[curr_e] = sta_idx
+                sta_ap_edge_src[curr_e] = ap_idx
+                ap_sta_edge_feat[curr_e][1] = ap_sta_dist[ap_idx][sta_idx] / 100
+                ap_sta_edge_feat[curr_e][2] = ap_sta_rssi[ap_idx][sta_idx] / 100
+                sta_ap_edge_feat[curr_e][1] = ap_sta_dist[ap_idx][sta_idx] / 100
+                sta_ap_edge_feat[curr_e][2] = ap_sta_rssi[ap_idx][sta_idx] / 100
+                curr_e += 1
+
+        g = dgl.heterograph({
+            ('ap', 'ap_ap', 'ap'): (ap_ap_edge_src, ap_ap_edge_dst),
+            ('ap', 'ap_sta', 'sta'): (ap_sta_edge_src, ap_sta_edge_dst),    
+            ('sta', 'sta_ap', 'ap'): (sta_ap_edge_src, sta_ap_edge_dst)    
+        })
+        g.nodes['ap'].data['feat'] = ap_feat
+        g.nodes['ap'].data['mask'] = ap_mask
+        g.nodes['ap'].data['throughput'] = ap_throughput
+        g.nodes['sta'].data['feat'] = sta_feat
+        g.nodes['sta'].data['mask'] = sta_mask
+        g.nodes['sta'].data['throughput'] = sta_throughput
+        g.edges['ap_ap'].data['feat'] = ap_ap_edge_feat
+        g.edges['ap_sta'].data['feat'] = ap_sta_edge_feat
+        g.edges['sta_ap'].data['feat'] = sta_ap_edge_feat
+        graphs.append(g)
+    if fn_idx in train_idx:
+        dgl.data.utils.save_graphs('data/setup1/processed/train_{}.bin'.format(curr_train), graphs, {"g": torch.tensor(list(range(num_snapshots)))})
+        curr_train += 1
+    elif fn_idx in valid_idx:
+        dgl.data.utils.save_graphs('data/setup1/processed/valid_{}.bin'.format(curr_valid), graphs, {"g": torch.tensor(list(range(num_snapshots)))})
+        curr_valid += 1
+    else:
+        dgl.data.utils.save_graphs('data/setup1/processed/test_{}.bin'.format(curr_test), graphs, {"g": torch.tensor(list(range(num_snapshots)))})
+        curr_test += 1

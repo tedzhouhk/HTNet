@@ -213,12 +213,13 @@ for fn_idx, fn in tqdm(enumerate(valid_fn), total=len(valid_fn)):
         g.edges['ap_sta'].data['feat'] = ap_sta_edge_feat
         g.edges['sta_ap'].data['feat'] = sta_ap_edge_feat
         graphs.append(g)
+    graphs = [dgl.batch(graphs)]
     if fn_idx in train_idx:
-        dgl.data.utils.save_graphs('data/setup1/processed/train_{}.bin'.format(curr_train), graphs, {"g": torch.tensor(list(range(num_snapshots)))})
+        dgl.data.utils.save_graphs('data/setup1/processed/train_{}.bin'.format(curr_train), graphs, {"g": torch.tensor([0])})
         curr_train += 1
     elif fn_idx in valid_idx:
-        dgl.data.utils.save_graphs('data/setup1/processed/valid_{}.bin'.format(curr_valid), graphs, {"g": torch.tensor(list(range(num_snapshots)))})
+        dgl.data.utils.save_graphs('data/setup1/processed/valid_{}.bin'.format(curr_valid), graphs, {"g": torch.tensor([0])})
         curr_valid += 1
     else:
-        dgl.data.utils.save_graphs('data/setup1/processed/test_{}.bin'.format(curr_test), graphs, {"g": torch.tensor(list(range(num_snapshots)))})
+        dgl.data.utils.save_graphs('data/setup1/processed/test_{}.bin'.format(curr_test), graphs, {"g": torch.tensor([0])})
         curr_test += 1

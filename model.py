@@ -21,8 +21,11 @@ class NetModel(torch.nn.Module):
                 mods['n' + str(l)] = torch.nn.BatchNorm1d(dim_node_in, track_running_stats=False)
                 mods['l' + str(l)] = Perceptron(dim_node_in, dim)
             dim_node_in = dim
+            # hetero: dglnn.EGATConv
         if self.is_dynamic:
-            mods['rnn'] = torch.nn.RNN(dim, dim, 2)
+            # mods['rnn'] = torch.nn.RNN(dim, dim, 2)
+            # mods['rnn'] = torch.nn.LSTM(dim, dim, 2)
+            mods['rnn'] = torch.nn.GRU(dim, dim, 2)
         mods['predict'] = Perceptron(dim, 1, act=False)
         mods['softplus'] = torch.nn.Softplus()
         self.mods = torch.nn.ModuleDict(mods)

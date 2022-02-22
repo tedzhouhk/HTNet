@@ -203,15 +203,15 @@ for fn_idx, fn in tqdm(enumerate(valid_fn), total=len(valid_fn)):
             ('ap', 'ap_sta', 'sta'): (ap_sta_edge_src, ap_sta_edge_dst),    
             ('sta', 'sta_ap', 'ap'): (sta_ap_edge_src, sta_ap_edge_dst)    
         })
-        g.nodes['ap'].data['feat'] = ap_feat
+        g.nodes['ap'].data['feat'] = torch.nan_to_num(ap_feat)
         g.nodes['ap'].data['mask'] = ap_mask
         g.nodes['ap'].data['throughput'] = ap_throughput
-        g.nodes['sta'].data['feat'] = sta_feat
+        g.nodes['sta'].data['feat'] = torch.nan_to_num(sta_feat)
         g.nodes['sta'].data['mask'] = sta_mask
         g.nodes['sta'].data['throughput'] = sta_throughput
-        g.edges['ap_ap'].data['feat'] = ap_ap_edge_feat
-        g.edges['ap_sta'].data['feat'] = ap_sta_edge_feat
-        g.edges['sta_ap'].data['feat'] = sta_ap_edge_feat
+        g.edges['ap_ap'].data['feat'] = torch.nan_to_num(ap_ap_edge_feat)
+        g.edges['ap_sta'].data['feat'] = torch.nan_to_num(ap_sta_edge_feat)
+        g.edges['sta_ap'].data['feat'] = torch.nan_to_num(sta_ap_edge_feat)
         graphs.append(g)
     graphs = [dgl.batch(graphs)]
     if fn_idx in train_idx:

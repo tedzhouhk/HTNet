@@ -9,7 +9,7 @@ parser.add_argument('--hetero', action='store_true', help='whether to treat as h
 parser.add_argument('--dynamic', action='store_true', help='whether to use dynamic information')
 parser.add_argument('--layer', type=int, default=2, help='number of layers')
 parser.add_argument('--dim', type=int, default=128, help='hidden dimension')
-parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
+parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--epoch', type=int, default=100, help='number of epochs')
 args = parser.parse_args()
 
@@ -31,6 +31,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 def eval(model, dataloader):
     model.eval()
     rmse = list()
+    rmse_tot = 0
     with torch.no_grad():
         for g in dataloader:
             g = g.to('cuda')
@@ -38,8 +39,9 @@ def eval(model, dataloader):
             pred = model(g)[mask]
             true = g.nodes['sta'].data['throughput'][mask]
             loss = torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8)
-            rmse.append(float(loss))
-    return np.mean(np.array(rmse))
+            rmse.append(float(loss) * pred.shape[0])
+            rmse_tot += pred.shape[0]
+    return np.sum(np.array(rmse)) / rmse_tot
 
 # torch.autograd.set_detect_anomaly(True)
 best_e = 0
@@ -50,6 +52,7 @@ if not os.path.exists('models'):
 for e in range(args.epoch):
     model.train()
     train_rmse = list()
+    rmse_tot = 0
     for g in train_dataloader:
         g = g.to('cuda')
         optimizer.zero_grad()
@@ -57,13 +60,14 @@ for e in range(args.epoch):
         pred = model(g)[mask]
         true = g.nodes['sta'].data['throughput'][mask]
         loss = torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8)
-        train_rmse.append(float(loss))
+        train_rmse.append(float(loss) * pred.shape[0])
+        rmse_tot += pred.shape[0]
         # with torch.autograd.detect_anomaly():
         loss.backward()
         optimizer.step()
-    train_rmse = np.mean(np.array(train_rmse))
+    train_rmse = np.sum(np.array(train_rmse)) / rmse_tot
     valid_rmse = eval(model, valid_dataloader)
-    print('Epoch: {:.2f} Training RMSE: {:.2f} Validation RMSE: {:.2f}'.format(e, train_rmse, valid_rmse))
+    print('Epoch: {} Training RMSE: {:.4f} Validation RMSE: {:.4f}'.format(e, train_rmse, valid_rmse))
     if valid_rmse < best_valid_rmse:
         best_e = e
         best_valid_rmse = valid_rmse
@@ -71,4 +75,4 @@ for e in range(args.epoch):
 
 print('Loading model in epoch {}...'.format(best_e))
 model.load_state_dict(torch.load(model_fn))
-print('Test RMSE: {:.2f}'.format(eval(model, test_dataloader)))
+print('Test RMSE: {:.4f}'.format(eval(model, test_dataloader)))

@@ -18,28 +18,26 @@ class NetModel(torch.nn.Module):
             dim_node_in += 4
         for l in range(self.num_layer):
             if not self.is_graph:
+                mods['n' + str(l)] = torch.nn.BatchNorm1d(dim_node_in, track_running_stats=False)
                 mods['l' + str(l)] = Perceptron(dim_node_in, dim)
             dim_node_in = dim
         if self.is_dynamic:
-            self.mods['rnn'] = torch.nn.RNN(dim, dim, 2)
+            mods['rnn'] = torch.nn.RNN(dim, dim, 2)
         mods['predict'] = Perceptron(dim, 1, act=False)
         mods['softplus'] = torch.nn.Softplus()
-        # mods['normv'] = torch.nn.BatchNorm1d(21, eps=1e-9, track_running_stats=False)
-        # mods['norme'] = torch.nn.BatchNorm1d(4, eps=1e-9, track_running_stats=False)
         self.mods = torch.nn.ModuleDict(mods)
 
     def forward(self, g):
-        # g.nodes['sta'].data['feat'] = self.mods['normv'](g.nodes['sta'].data['feat'])
-        # g.nodes['ap'].data['feat'] = self.mods['normv'](g.nodes['ap'].data['feat'])
-        # g.edges['ap_ap'].data['feat'] = self.mods['norme'](g.edges['ap_ap'].data['feat'])
-        # g.edges['sta_ap'].data['feat'] = self.mods['norme'](g.edges['sta_ap'].data['feat'])
-        # g.edges['ap_sta'].data['feat'] = self.mods['norme'](g.edges['ap_sta'].data['feat'])
+        # if not self.training:
+        #     import pdb; pdb.set_trace()
         if not self.is_graph:
             h = torch.cat([g.nodes['sta'].data['feat'], g.edges['sta_ap'].data['feat']], dim=1)
             for l in range(self.num_layer):
+                h = self.mods['n' + str(l)](h)
                 h = self.mods['l' + str(l)](h)
         if self.is_dynamic:
-            h = h.reshape((dua))
+            h = h.view((self.num_snapshot, -1, h.shape[-1]))
+            h = self.mods['rnn'](h)[0].view(-1, h.shape[-1])
         h = self.mods['predict'](h)
         # to ensure positive prediction
         h = self.mods['softplus'](h)

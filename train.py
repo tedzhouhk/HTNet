@@ -55,6 +55,7 @@ for e in range(args.epoch):
     rmse_tot = 0
     for g in train_dataloader:
         g = g.to('cuda')
+        import pdb; pdb.set_trace()
         optimizer.zero_grad()
         mask = g.nodes['sta'].data['mask'] > 0
         pred = model(g)[mask]

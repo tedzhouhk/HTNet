@@ -26,6 +26,7 @@ class NetModel(torch.nn.Module):
         else:
             dim_node_in = 21
             dim_edge_in = 4
+            dim_tot = 25
             if not self.is_hetero:
                 for l in range(self.num_layer):
                     conv = EGCNConv(dim_node_in, dim_edge_in, dim, dim)
@@ -38,6 +39,7 @@ class NetModel(torch.nn.Module):
                     mods['l' + str(l)] = EHeteroGraphConv(conv_dict)
                     dim_node_in = dim
                     dim_edge_in = dim
+                    dim_tot += dim
             else:
                 for l in range(self.num_layer):
                     conv_dict = dict()
@@ -49,11 +51,12 @@ class NetModel(torch.nn.Module):
                     mods['l' + str(l)] = EHeteroGraphConv(conv_dict)
                     dim_node_in = dim
                     dim_edge_in = dim
-                    
+                    dim_tot += dim
+            mods['comb'] = Perceptron(dim_tot, dim)
         if self.is_dynamic:
             # mods['rnn'] = torch.nn.RNN(dim, dim, 2)
-            # mods['rnn'] = torch.nn.LSTM(dim, dim, 2)
-            mods['rnn'] = torch.nn.GRU(dim, dim, 2)
+            mods['rnn'] = torch.nn.LSTM(dim, dim, 2)
+            # mods['rnn'] = torch.nn.GRU(dim, dim, 2)
         mods['predict'] = Perceptron(dim, 1, act=False)
         mods['softplus'] = torch.nn.Softplus()
         self.mods = torch.nn.ModuleDict(mods)
@@ -67,6 +70,7 @@ class NetModel(torch.nn.Module):
                 h = self.mods['n' + str(l)](h)
                 h = self.mods['l' + str(l)](h)
         else:
+            h = [g.nodes['sta'].data['feat'], g.edges['sta_ap'].data['feat']]
             h_node = {'ap':g.nodes['ap'].data['feat'], 'sta':g.nodes['sta'].data['feat']}
             h_edge = {'ap_ap':g.edges['ap_ap'].data['feat'], 'ap_sta':g.edges['ap_sta'].data['feat'], 'sta_ap':g.edges['sta_ap'].data['feat']}
             for l in range(self.num_layer):
@@ -76,7 +80,8 @@ class NetModel(torch.nn.Module):
                 h_edge['ap_sta'] = self.mods['ne' + str(l)](h_edge['ap_sta'])
                 h_edge['sta_ap'] = self.mods['ne' + str(l)](h_edge['sta_ap'])
                 h_node, h_edge = self.mods['l' + str(l)](g, h_node, h_edge)
-            h = h_node['sta']
+                h.append(h_node['sta'])
+            h = self.mods['comb'](torch.cat(h, dim=1))
         if self.is_dynamic:
             h = h.view((self.num_snapshot, -1, h.shape[-1]))
             h = self.mods['rnn'](h)[0].view(-1, h.shape[-1])
@@ -203,7 +208,6 @@ class EGATConv(nn.Module):
 
     def forward(self, graph, nfeats, efeats, get_attention=False):
         with graph.local_scope():
-
             f_ni = self.fc_ni(nfeats)
             f_nj = self.fc_nj(nfeats)
             f_fij = self.fc_fij(efeats)

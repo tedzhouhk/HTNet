@@ -9,12 +9,26 @@ class NetworkData(torch.utils.data.Dataset):
         valid = list()
         test = list()
         for fn in os.listdir(fn_dir):
+            g = dgl.load_graphs(fn_dir + fn)[0][0]
+            # no sinr
+            # g.nodes['sta'].data['feat'][:, 20] = 0
+            # no airtime
+            # g.nodes['ap'].data['feat'][:, 19] = 0
+            # no rssi
+            # g.edges['sta_ap'].data['feat'][:, 2] = 0
+            # g.edges['ap_sta'].data['feat'][:, 2] = 0
+            # no location
+            # g.nodes['sta'].data['feat'][:, 1] = 0
+            # g.nodes['sta'].data['feat'][:, 2] = 0
+            # g.nodes['ap'].data['feat'][:, 1] = 0
+            # g.nodes['ap'].data['feat'][:, 2] = 0
+            
             if fn.startswith('train'):
-                train.append(dgl.load_graphs(fn_dir + fn)[0][0])
+                train.append(g)
             elif fn.startswith('valid'):
-                valid.append(dgl.load_graphs(fn_dir + fn)[0][0])
+                valid.append(g)
             else:
-                test.append(dgl.load_graphs(fn_dir + fn)[0][0])
+                test.append(g)
         self.data = train + valid + test
         self.train_sampler = torch.utils.data.sampler.SubsetRandomSampler(torch.arange(len(train)))
         self.valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(torch.arange(len(train), len(train) + len(valid)))

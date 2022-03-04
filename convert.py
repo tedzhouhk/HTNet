@@ -8,7 +8,14 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-num_snapshots = 10
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--num_snapshot', type=int, default=10, help='number of snapshots in each sequence')
+parser.add_argument('--setup', type=int, help='which setup to simulate')
+args = parser.parse_args()
+
+num_snapshots = args.num_snapshot
 
 def check_valid(prefix, i, fn):
     for snapshot in range(num_snapshots):
@@ -97,19 +104,18 @@ def get_simulated_result(df, ap_map, sta_map, out_fn):
             ap_sta_rssi[ap][sta_map[nc]] = float(rssi[i])
     return sta_throughput, ap_throughput, ap_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter
 
-# setup 1
 valid_fn = dict()
-for fn in os.listdir('data/setup1/raw'):
+for fn in os.listdir('data/setup{}/raw'.format(args.setup)):
     if fn.endswith('csv'):
         i = fn.split('_')[0]
         raw_fn = fn.split('_', 2)[2][:-4]
         if not '{}!{}'.format(i, raw_fn) in valid_fn:
-            if check_valid('data/setup1/raw/', i, raw_fn):
+            if check_valid('data/setup{}/raw/'.format(args.setup), i, raw_fn):
                 valid_fn['{}!{}'.format(i, raw_fn)] = len(valid_fn)
 print('Total training samples:', len(valid_fn))
 
-if not os.path.exists('data/setup1/processed'):
-    os.mkdir('data/setup1/processed')
+if not os.path.exists('data/setup{}/processed'.format(args.setup)):
+    os.mkdir('data/setup{}/processed'.format(args.setup))
 
 tot_idx = list(range(len(valid_fn)))
 random.shuffle(tot_idx)
@@ -123,7 +129,7 @@ curr_test = 0
 for fn_idx, fn in tqdm(enumerate(valid_fn), total=len(valid_fn)):
     [ii, raw_fn] = fn.split('!')
     # get AP/STA ids
-    df = pd.read_csv('data/setup1/raw/{}_0_{}.csv'.format(ii, raw_fn), sep=';')
+    df = pd.read_csv('data/setup{}/raw/{}_0_{}.csv'.format(args.setup, ii, raw_fn), sep=';')
     ap_map = dict()
     sta_map = dict()
     for nc in df['node_code'].tolist():
@@ -133,15 +139,15 @@ for fn_idx, fn in tqdm(enumerate(valid_fn), total=len(valid_fn)):
             sta_map[nc] = len(sta_map)
     ap_mask = torch.zeros((len(ap_map), 1), dtype = torch.bool)
     sta_mask = torch.zeros((len(sta_map), 1), dtype = torch.bool)
-    moving_idxs = pickle.load(open('data/setup1/raw/{}_{}.pkl'.format(ii, raw_fn), 'rb'))
+    moving_idxs = pickle.load(open('data/setup{}/raw/{}_{}.pkl'.format(args.setup, ii, raw_fn), 'rb'))
     for idx in moving_idxs:
         sta_mask[sta_map[df.at[idx,'node_code']]] = 1
     graphs = list()
     for j in range(num_snapshots):
-        df = pd.read_csv('data/setup1/raw/{}_{}_{}.csv'.format(ii, j, raw_fn), sep=';')
+        df = pd.read_csv('data/setup{}/raw/{}_{}_{}.csv'.format(args.setup, ii, j, raw_fn), sep=';')
         ap_x, ap_y, sta_x, sta_y, ap_ap_dist, ap_sta_dist = get_dist(df, ap_map, sta_map)
         ap_pchannel, ap_channel, sta_pchannel, sta_channel = get_channel(df, ap_map, sta_map)
-        sta_throughput, ap_throughput, ap_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter = get_simulated_result(df, ap_map, sta_map, 'data/setup1/raw/{}_{}_{}.out'.format(ii, j, raw_fn))
+        sta_throughput, ap_throughput, ap_airtime, sta_sinr, ap_sta_rssi, ap_ap_inter = get_simulated_result(df, ap_map, sta_map, 'data/setup{}/raw/{}_{}_{}.out'.format(args.setup, ii, j, raw_fn))
 
         ap_throughput = ap_throughput.unsqueeze(-1)
         sta_throughput = sta_throughput.unsqueeze(-1)
@@ -215,11 +221,11 @@ for fn_idx, fn in tqdm(enumerate(valid_fn), total=len(valid_fn)):
         graphs.append(g)
     graphs = [dgl.batch(graphs)]
     if fn_idx in train_idx:
-        dgl.data.utils.save_graphs('data/setup1/processed/train_{}.bin'.format(curr_train), graphs, {"g": torch.tensor([0])})
+        dgl.data.utils.save_graphs('data/setup{}/processed/train_{}.bin'.format(args.setup, curr_train), graphs, {"g": torch.tensor([0])})
         curr_train += 1
     elif fn_idx in valid_idx:
-        dgl.data.utils.save_graphs('data/setup1/processed/valid_{}.bin'.format(curr_valid), graphs, {"g": torch.tensor([0])})
+        dgl.data.utils.save_graphs('data/setup{}/processed/valid_{}.bin'.format(args.setup, curr_valid), graphs, {"g": torch.tensor([0])})
         curr_valid += 1
     else:
-        dgl.data.utils.save_graphs('data/setup1/processed/test_{}.bin'.format(curr_test), graphs, {"g": torch.tensor([0])})
+        dgl.data.utils.save_graphs('data/setup{}/processed/test_{}.bin'.format(args.setup, curr_test), graphs, {"g": torch.tensor([0])})
         curr_test += 1

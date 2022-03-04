@@ -2,15 +2,20 @@ import glob
 import os
 from subprocess import Popen, DEVNULL
 from tqdm import tqdm
+import argparse
 
-p = Popen('find data/setup1/raw/ -name "*.out" -delete', shell=True)
+parser = argparse.ArgumentParser()
+parser.add_argument('--setup', type=int, help='which setup to simulate')
+args = parser.parse_args()
+
+p = Popen('find data/setup{}/raw/ -name "*.out" -delete'.format(args.setup), shell=True)
 p.wait()
 print(p.returncode)
 
 flist = list()
-for file in os.listdir('data/setup1/raw'):
+for file in os.listdir('data/setup{}/raw'.format(args.setup)):
     if file.endswith('.csv'):
-        flist.append('data/setup1/raw/' + file)
+        flist.append('data/setup{}/raw/'.format(args.setup) + file)
 flist.sort()
 
 shell_command="komondor_main {} {} sim_{} 0 0 1 10 1992"

@@ -11,6 +11,7 @@ parser.add_argument('--layer', type=int, default=2, help='number of layers')
 parser.add_argument('--dim', type=int, default=128, help='hidden dimension')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--epoch', type=int, default=100, help='number of epochs')
+parser.add_argument('--output', type=str, default='', help='save predictions to files')
 args = parser.parse_args()
 
 import os
@@ -18,6 +19,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 
 import torch
 import dgl
+import pickle
 import numpy as np
 from minibatch import get_dataloader
 from model import NetModel
@@ -28,12 +30,17 @@ train_dataloader, valid_dataloader, test_dataloader = get_dataloader('data/{}/pr
 model = NetModel(args.layer, args.dim, args.graph, args.hetero, args.dynamic, args.num_snapshot).cuda()
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-def eval(model, dataloader):
+def eval(model, dataloader, output=''):
+    if output != '':
+        if not os.path.exists('output'):
+            os.mkdir('output')
+        output_fn = 'output/{}.pkl'.format(output)
+        outs = dict()
     model.eval()
     rmse = list()
     rmse_tot = 0
     with torch.no_grad():
-        for g in dataloader:
+        for g, idx in dataloader:
             g = g.to('cuda')
             mask = g.nodes['sta'].data['mask'] > 0
             pred = model(g)[mask]
@@ -41,6 +48,12 @@ def eval(model, dataloader):
             loss = torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8)
             rmse.append(float(loss) * pred.shape[0])
             rmse_tot += pred.shape[0]
+            if output != '':
+                out = {'pred':pred.cpu().detach().numpy(), 'true':treu.cpu().detach().numpy()}
+                outs[idx] = out
+    if output != '':
+        with open(output_fn, 'wb') as f:
+            pickle.dump(outs, f)
     return np.sum(np.array(rmse)) / rmse_tot
 
 # torch.autograd.set_detect_anomaly(True)
@@ -53,7 +66,7 @@ for e in range(args.epoch):
     model.train()
     train_rmse = list()
     rmse_tot = 0
-    for g in train_dataloader:
+    for g, _ in train_dataloader:
         g = g.to('cuda')
         optimizer.zero_grad()
         mask = g.nodes['sta'].data['mask'] > 0
@@ -75,4 +88,4 @@ for e in range(args.epoch):
 
 print('Loading model in epoch {}...'.format(best_e))
 model.load_state_dict(torch.load(model_fn))
-print('Test RMSE: {:.4f}'.format(eval(model, test_dataloader)))
+print('Test RMSE: {:.4f}'.format(eval(model, test_dataloader, output=args.output)))

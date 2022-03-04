@@ -38,7 +38,7 @@ class NetworkData(torch.utils.data.Dataset):
         return len(Self.data)
     
     def __getitem__(self, idx):
-        return self.data[idx]
+        return self.data[idx], idx
 
     def to_cuda(self):
         cuda_data = [d.to('cuda') for d in self.data]

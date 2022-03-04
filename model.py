@@ -12,6 +12,7 @@ class NetModel(torch.nn.Module):
         self.is_graph = is_graph
         self.is_hetero = is_hetero
         self.is_dynamic = is_dynamic
+        self.is_jk = Ture if is_hetero else False
         self.num_snapshot = num_snapshot
 
         mods = dict()
@@ -40,6 +41,7 @@ class NetModel(torch.nn.Module):
                     dim_node_in = dim
                     dim_edge_in = dim
                     dim_tot += dim
+                mods['comb'] = Perceptron(dim_tot, dim)
             else:
                 for l in range(self.num_layer):
                     conv_dict = dict()
@@ -51,12 +53,10 @@ class NetModel(torch.nn.Module):
                     mods['l' + str(l)] = EHeteroGraphConv(conv_dict)
                     dim_node_in = dim
                     dim_edge_in = dim
-                    dim_tot += dim
-            mods['comb'] = Perceptron(dim_tot, dim)
         if self.is_dynamic:
             # mods['rnn'] = torch.nn.RNN(dim, dim, 2)
-            mods['rnn'] = torch.nn.LSTM(dim, dim, 2)
             # mods['rnn'] = torch.nn.GRU(dim, dim, 2)
+            mods['rnn'] = torch.nn.LSTM(dim, dim, 2)
         mods['predict'] = Perceptron(dim, 1, act=False)
         mods['softplus'] = torch.nn.Softplus()
         self.mods = torch.nn.ModuleDict(mods)
@@ -81,7 +81,7 @@ class NetModel(torch.nn.Module):
                 h_edge['sta_ap'] = self.mods['ne' + str(l)](h_edge['sta_ap'])
                 h_node, h_edge = self.mods['l' + str(l)](g, h_node, h_edge)
                 h.append(h_node['sta'])
-            h = self.mods['comb'](torch.cat(h, dim=1))
+            h = self.mods['comb'](torch.cat(h, dim=1)) if self.is_jk else h[-1]
         if self.is_dynamic:
             h = h.view((self.num_snapshot, -1, h.shape[-1]))
             h = self.mods['rnn'](h)[0].view(-1, h.shape[-1])

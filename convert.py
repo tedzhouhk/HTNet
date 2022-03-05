@@ -141,7 +141,10 @@ for fn_idx, fn in tqdm(enumerate(valid_fn), total=len(valid_fn)):
     sta_mask = torch.zeros((len(sta_map), 1), dtype = torch.bool)
     moving_idxs = pickle.load(open('data/setup{}/raw/{}_{}.pkl'.format(args.setup, ii, raw_fn), 'rb'))
     for idx in moving_idxs:
-        sta_mask[sta_map[df.at[idx,'node_code']]] = 1
+        try:
+            sta_mask[sta_map[df.at[idx,'node_code']]] = 1
+        except:
+            import pdb; pdb.set_trace()
     graphs = list()
     for j in range(num_snapshots):
         df = pd.read_csv('data/setup{}/raw/{}_{}_{}.csv'.format(args.setup, ii, j, raw_fn), sep=';')

@@ -143,11 +143,13 @@ if args.setup == 2:
                         df.at[idx, 'moved'] = 1
                 fn = 'data/setup2/raw/{}_{}_{}'.format(i, k, input_files[p].split('/')[-1])
                 sorted_df = df.copy(deep=True)
-                sorted_df.sort_values(by=['wlan_code', 'node_type'], inplace=True)
+                sorted_df.sort_values(by=['wlan_code', 'node_type'], inplace=True, ignore_index=True)
                 if k == 0:
                     first_snapshot_moving_idxs = list(sorted_df[sorted_df['moved'] == 1].index)
                 sorted_df.drop('moved', axis=1, inplace=True)
                 sorted_df.to_csv(fn, index=False, sep=';')
+                adf = sorted_df
+                bdf = pd.read_csv(fn, sep=';')
             mfn = 'data/setup2/raw/{}_{}.pkl'.format(i, input_files[p].split('/')[-1][:-4])
             with open(mfn, 'wb') as f:
                 pickle.dump(first_snapshot_moving_idxs, f)

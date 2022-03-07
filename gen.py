@@ -171,7 +171,7 @@ if args.setup == 3:
         wlan_codes = list(set(odf['wlan_code'].tolist()))
         ap_pos = get_ap_pos(odf)
         for i in range(num_scenarios):
-            df = odf.copy(deep=True)
+            df = odf.copy(deep=True).astype({'z(m)': 'float64'})
             target_idxs = list(df[df['node_type'] == 1].index)
             curr_wlan_code = chr(ord(df['wlan_code'].max()) + 1)
             fake_df = df.head(n=2 * num_interference).copy(deep=True)
@@ -206,12 +206,12 @@ if args.setup == 3:
                 curr_wlan_code = chr(ord(curr_wlan_code) + 1)
             for k in range(num_snapshots):
                 concat_df = pd.concat([df, fake_df])
-                if k < num_snapshots - 1:
-                    for i in range(fake_df.shape[0]):
-                        fake_df.at[i, 'x(m)'] = fake_df.at[i, 'x(m)'] + fake_speed[i] * math.cos(fake_rads[i])
-                        fake_df.at[i, 'y(m)'] = fake_df.at[i, 'y(m)'] + fake_speed[i] * math.sin(fake_rads[i])
                 fn = 'data/setup3/raw/{}_{}_{}'.format(i, k, input_files[p].split('/')[-1])
                 concat_df.to_csv(fn, index=False, sep=';')
+                if k < num_snapshots - 1:
+                    for fi in range(fake_df.shape[0]):
+                        fake_df.at[fi, 'x(m)'] = fake_df.at[fi, 'x(m)'] + fake_speed[fi] * math.cos(fake_rads[fi])
+                        fake_df.at[fi, 'y(m)'] = fake_df.at[fi, 'y(m)'] + fake_speed[fi] * math.sin(fake_rads[fi])
             mfn = 'data/setup3/raw/{}_{}.pkl'.format(i, input_files[p].split('/')[-1][:-4])
             with open(mfn, 'wb') as f:
                 pickle.dump(target_idxs, f)

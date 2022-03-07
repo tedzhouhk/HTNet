@@ -123,4 +123,18 @@ else:
     pred = torch.from_numpy(model.predict(test_x))
     true = torch.from_numpy(test_y)
     rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
+    if args.output != '':
+        if not os.path.exists('output'):
+            os.mkdir('output')
+        output_fn = 'output/{}.pkl'.format(output)
+        outs = dict()
+        s_idx = 0
+        e_idx = 0
+        for idx, l in zip(test_idx, test_length):
+            e_idx += l
+            out = {'pred':pred[s_idx:e_idx], 'true':true[s_idx:e_idx]}
+            outs[idx] = out
+            s_idx += l
+        with open(output_fn, 'wb') as f:
+            pickle.dump(outs, f)
     print('Test RMSE: {:.4f}'.format(rmse))

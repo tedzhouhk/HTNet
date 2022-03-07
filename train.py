@@ -11,7 +11,7 @@ parser.add_argument('--dynamic', action='store_true', help='whether to use dynam
 parser.add_argument('--layer', type=int, default=2, help='number of layers')
 parser.add_argument('--dim', type=int, default=128, help='hidden dimension')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
-parser.add_argument('--epoch', type=int, default=100, help='number of epochs')
+parser.add_argument('--epoch', type=int, default=150, help='number of epochs')
 parser.add_argument('--output', type=str, default='', help='save predictions to files')
 args = parser.parse_args()
 

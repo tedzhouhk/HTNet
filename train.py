@@ -118,10 +118,9 @@ else:
     test_x = np.concatenate(test_x, axis=0)
     test_y = np.concatenate(test_y, axis=None)
     
-    model = xgboost.XGBRegressor(max_depth=4, lr=0.1, n_estimators=100, silent=True)
+    model = xgboost.XGBRegressor(max_depth=4, n_estimators=100)
     model.fit(train_x, train_y)
-    
-    pred = torch.from_numpy(model.predict(test_y))
+    pred = torch.from_numpy(model.predict(test_x))
     true = torch.from_numpy(test_y)
-    rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8)) / test_y.shape[0]
+    rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
     print('Test RMSE: {:.4f}'.format(rmse))

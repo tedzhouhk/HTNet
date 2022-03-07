@@ -49,7 +49,7 @@ def eval(model, dataloader, output=''):
             rmse.append(float(loss) * pred.shape[0])
             rmse_tot += pred.shape[0]
             if output != '':
-                out = {'pred':pred.cpu().detach().numpy(), 'true':treu.cpu().detach().numpy()}
+                out = {'pred':pred.cpu().detach().numpy(), 'true':true.cpu().detach().numpy()}
                 outs[idx] = out
     if output != '':
         with open(output_fn, 'wb') as f:

@@ -177,9 +177,9 @@ if args.setup == 3:
             fake_df = df.head(n=2 * num_interference).copy(deep=True)
             fake_rads = list()
             fake_speed = list()
-            for i in range(num_interference):
-                ap_idx = 2 * i
-                sta_idx = 2 * i + 1
+            for ii in range(num_interference):
+                ap_idx = 2 * ii
+                sta_idx = 2 * ii + 1
                 fake_df.at[ap_idx, 'node_code'] = 'FAKE_AP_{}'.format(curr_wlan_code)
                 fake_df.at[sta_idx, 'node_code'] = 'FAKE_STA_{}1'.format(curr_wlan_code)
                 fake_df.at[ap_idx, 'node_type'] = 0

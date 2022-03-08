@@ -11,7 +11,7 @@ parser.add_argument('--dynamic', action='store_true', help='whether to use dynam
 parser.add_argument('--layer', type=int, default=2, help='number of layers')
 parser.add_argument('--dim', type=int, default=128, help='hidden dimension')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
-parser.add_argument('--epoch', type=int, default=100, help='number of epochs')
+parser.add_argument('--epoch', type=int, default=150, help='number of epochs')
 parser.add_argument('--output', type=str, default='', help='save predictions to files')
 args = parser.parse_args()
 
@@ -53,7 +53,7 @@ if not args.gbrt:
                 rmse_tot += pred.shape[0]
                 if output != '':
                     out = {'pred':pred.cpu().detach().numpy(), 'true':true.cpu().detach().numpy()}
-                    outs[idx] = out
+                    outs[int(idx)] = out
         if output != '':
             with open(output_fn, 'wb') as f:
                 pickle.dump(outs, f)
@@ -118,10 +118,23 @@ else:
     test_x = np.concatenate(test_x, axis=0)
     test_y = np.concatenate(test_y, axis=None)
     
-    model = xgboost.XGBRegressor(max_depth=4, lr=0.1, n_estimators=100, silent=True)
+    model = xgboost.XGBRegressor(max_depth=4, n_estimators=100)
     model.fit(train_x, train_y)
-    
-    pred = torch.from_numpy(model.predict(test_y))
+    pred = torch.from_numpy(model.predict(test_x))
     true = torch.from_numpy(test_y)
-    rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8)) / test_y.shape[0]
+    rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
+    if args.output != '':
+        if not os.path.exists('output'):
+            os.mkdir('output')
+        output_fn = 'output/{}.pkl'.format(args.output)
+        outs = dict()
+        s_idx = 0
+        e_idx = 0
+        for idx, l in zip(test_idx, test_length):
+            e_idx += l
+            out = {'pred':pred[s_idx:e_idx].numpy(), 'true':true[s_idx:e_idx].numpy()}
+            outs[idx] = out
+            s_idx += l
+        with open(output_fn, 'wb') as f:
+            pickle.dump(outs, f)
     print('Test RMSE: {:.4f}'.format(rmse))

@@ -12,7 +12,7 @@ class NetModel(torch.nn.Module):
         self.is_graph = is_graph
         self.is_hetero = is_hetero
         self.is_dynamic = is_dynamic
-        self.is_jk = Ture if is_hetero else False
+        self.is_jk = True if is_hetero else False
         self.num_snapshot = num_snapshot
 
         mods = dict()

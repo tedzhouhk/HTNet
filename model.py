@@ -40,8 +40,6 @@ class NetModel(torch.nn.Module):
                     mods['l' + str(l)] = EHeteroGraphConv(conv_dict)
                     dim_node_in = dim
                     dim_edge_in = dim
-                    dim_tot += dim
-                mods['comb'] = Perceptron(dim_tot, dim)
             else:
                 for l in range(self.num_layer):
                     conv_dict = dict()
@@ -53,6 +51,8 @@ class NetModel(torch.nn.Module):
                     mods['l' + str(l)] = EHeteroGraphConv(conv_dict)
                     dim_node_in = dim
                     dim_edge_in = dim
+                    dim_tot += dim
+                mods['comb'] = Perceptron(dim_tot, dim)
         if self.is_dynamic:
             # mods['rnn'] = torch.nn.RNN(dim, dim, 2)
             # mods['rnn'] = torch.nn.GRU(dim, dim, 2)
@@ -62,8 +62,6 @@ class NetModel(torch.nn.Module):
         self.mods = torch.nn.ModuleDict(mods)
 
     def forward(self, g):
-        # if not self.training:
-        #     import pdb; pdb.set_trace()
         if not self.is_graph:
             h = torch.cat([g.nodes['sta'].data['feat'], g.edges['sta_ap'].data['feat']], dim=1)
             for l in range(self.num_layer):

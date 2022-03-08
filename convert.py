@@ -36,7 +36,7 @@ def get_dist(df, ap_map, sta_map):
     sta_y = torch.zeros(len(sta_map))
     for _, r in df.iterrows():
         nc = r['node_code']
-        if nc.startswith('A'):
+        if nc.startswith('A') or nc.startswith('FAKE_A'):
             ap_x[ap_map[nc]] = float(r['x(m)'])
             ap_y[ap_map[nc]] = float(r['y(m)'])
         else:
@@ -57,7 +57,7 @@ def get_channel(df, ap_map, sta_map):
         pc = r['primary_channel']
         minc = r['min_channel_allowed']
         maxc = r['max_channel_allowed']
-        if nc.startswith('A'):
+        if nc.startswith('A') or nc.startswith('FAKE_A'):
             ap_pchannel[ap_map[nc]][pc] = 1
             ap_channel[ap_map[nc]][minc:maxc + 1] = 1
         else:
@@ -65,7 +65,11 @@ def get_channel(df, ap_map, sta_map):
             sta_channel[sta_map[nc]][minc:maxc + 1] = 1
     return ap_pchannel, ap_channel, sta_pchannel, sta_channel
 
+
+inter_error = 0
+
 def get_simulated_result(df, ap_map, sta_map, out_fn):
+    global inter_error
     sta_throughput = torch.zeros(len(sta_map))
     ap_throughput = torch.zeros(len(ap_map))
     ap_airtime = torch.zeros(len(ap_map))
@@ -83,19 +87,28 @@ def get_simulated_result(df, ap_map, sta_map, out_fn):
             airtime.append(sum(split_ar) / len(split_ar))
         rssi = f.readline().strip('{}\n').split(',')
         inter = list()
-        for _ in range(len(ap_map)):
-            inter.append(f.readline().strip('{}\n;').split(','))
+        for i in range(len(ap_map)):
+            fline = f.readline()
+            # a bug in konmondor simulator where interference is missing
+            inter.append(fline.strip('{}\n;').split(','))
+            if i != len(ap_map) - 1 and fline.endswith('}\n'):
+                inter_error += 1
+                print('Interference error detected on {}, total: {}'.format(out_fn, inter_error))
+                break
         sinr = f.readline().strip('{}\n').split(',')
     ap_neighbors_nc = df[df['node_type']==0]['node_code'].tolist()
     ap_neighbors = [ap_map[x] for x in ap_neighbors_nc]
     curr_ap = 0
     for i, r in df.iterrows():
         nc = r['node_code']
-        if nc.startswith('A'):
+        if nc.startswith('A') or nc.startswith('FAKE_A'):
             ap_throughput[ap_map[nc]] = float(throughput[i])
             ap_airtime[ap_map[nc]] = float(airtime[curr_ap])
             for j, ap in enumerate(ap_neighbors):
-                ap_ap_inter[ap_map[nc]][ap] = float(inter[curr_ap][j])
+                try:
+                    ap_ap_inter[ap_map[nc]][ap] = float(inter[curr_ap][j])
+                except:
+                    ap_ap_inter[ap_map[nc]][ap] = -50
             curr_ap += 1
         else:
             sta_throughput[sta_map[nc]] = float(throughput[i])
@@ -133,7 +146,7 @@ for fn_idx, fn in tqdm(enumerate(valid_fn), total=len(valid_fn)):
     ap_map = dict()
     sta_map = dict()
     for nc in df['node_code'].tolist():
-        if nc.startswith('A'):
+        if nc.startswith('A') or nc.startswith('FAKE_A'):
             ap_map[nc] = len(ap_map)
         else:
             sta_map[nc] = len(sta_map)

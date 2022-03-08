@@ -53,7 +53,7 @@ if not args.gbrt:
                 rmse_tot += pred.shape[0]
                 if output != '':
                     out = {'pred':pred.cpu().detach().numpy(), 'true':true.cpu().detach().numpy()}
-                    outs[idx] = out
+                    outs[int(idx)] = out
         if output != '':
             with open(output_fn, 'wb') as f:
                 pickle.dump(outs, f)
@@ -126,7 +126,7 @@ else:
     if args.output != '':
         if not os.path.exists('output'):
             os.mkdir('output')
-        output_fn = 'output/{}.pkl'.format(output)
+        output_fn = 'output/{}.pkl'.format(args.output)
         outs = dict()
         s_idx = 0
         e_idx = 0

@@ -132,7 +132,7 @@ else:
         e_idx = 0
         for idx, l in zip(test_idx, test_length):
             e_idx += l
-            out = {'pred':pred[s_idx:e_idx], 'true':true[s_idx:e_idx]}
+            out = {'pred':pred[s_idx:e_idx].numpy(), 'true':true[s_idx:e_idx].numpy()}
             outs[idx] = out
             s_idx += l
         with open(output_fn, 'wb') as f:

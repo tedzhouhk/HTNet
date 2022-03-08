@@ -89,7 +89,7 @@ def get_simulated_result(df, ap_map, sta_map, out_fn):
         inter = list()
         for i in range(len(ap_map)):
             fline = f.readline()
-            # a bug in konmondor simulator where interference is missing
+            # a bug in konmondor simulator where some interference might be missing
             inter.append(fline.strip('{}\n;').split(','))
             if i != len(ap_map) - 1 and fline.endswith('}\n'):
                 inter_error += 1

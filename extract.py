@@ -36,9 +36,10 @@ while True:
                 curr_sta_idx = sta_idx + i * (len(outs[idx]['true']) // args.num_snapshot)
                 data[prefix].append(outs[idx]['pred'][curr_sta_idx])
     with open('extracted.out', 'w') as f:
+        prefix_list = list(data)
         for i in range(len(data['true'])):
             line = list()
-            for prefix in list(data):
+            for prefix in prefix_list:
                 line.append(str(data[prefix][i]))
             line = '\t'.join(line)
             f.write(line + '\n')

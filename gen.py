@@ -215,3 +215,66 @@ if args.setup == 3:
             mfn = 'data/setup3/raw/{}_{}.pkl'.format(i, input_files[p].split('/')[-1][:-4])
             with open(mfn, 'wb') as f:
                 pickle.dump(target_idxs, f)
+
+def allocate_dynamic_channel(df):
+    for idx, row in df.iterrows():
+        if row['node_type'] == 0:
+            p_channel = row['primary_channel']
+            min_channel = row['min_channel_allowed']
+            max_channel = row['max_channel_allowed']
+            action = random.randrange(5)
+            if action == 0:
+                # increase min_channel_allowed
+                if min_channel != max_channel:
+                    min_channel += 1
+                    if p_channel < min_channel:
+                        p_channel = min_channel
+            elif action == 1:
+                # decrease min_channel_allowed
+                if min_channel != 0:
+                    min_channel -= 1
+            elif action == 2:
+                # increase max_channel_allowed:
+                if max_channel != 7:
+                    max_channel += 1
+            elif action == 3:
+                # decrease max_channel_allowed:
+                if max_channel != min_channel:
+                    max_channel -= 1
+                    if p_channel > max_channel:
+                        p_channel = max_channel
+            elif action == 4:
+                # random channels
+                min_channel = random.randrange(8)
+                max_channel = min_channel + random.randrange(8 - min_channel)
+                p_channel = min_channel
+            assert(min_channel >= 0 and min_channel <=7)
+            assert(max_channel >= 0 and max_channel <=7)
+            assert(min_channel <= max_channel)
+            assert(min_channel <= p_channel)
+            assert(p_channel <= max_channel)
+        df.at[idx, 'primary_channel'] = p_channel
+        df.at[idx, 'min_channel_allowed'] = min_channel
+        df.at[idx, 'max_channel_allowed'] = max_channel
+
+if args.setup == 4:
+    # setup 4: dynamic channel allocation
+    print('generating setup 4...')
+    if not os.path.exists('data/setup4'):
+        os.mkdir('data/setup4')
+    if not os.path.exists('data/setup4/raw'):
+        os.mkdir('data/setup4/raw')
+    for p in tqdm(range(len(input_files))):
+        odf = pd.read_csv(input_files[p],sep=';')
+        wlan_codes = list(set(odf['wlan_code'].tolist()))
+        ap_pos = get_ap_pos(odf)
+        for i in range(num_scenarios):
+            df = odf.copy(deep=True).astype({'z(m)': 'float64'})
+            target_idxs = list(df[df['node_type'] == 1].index)
+            for k in range(num_snapshots):
+                allocate_dynamic_channel(df)                            
+                fn = 'data/setup4/raw/{}_{}_{}'.format(i, k, input_files[p].split('/')[-1])
+                df.to_csv(fn, index=False, sep=';')
+            mfn = 'data/setup4/raw/{}_{}.pkl'.format(i, input_files[p].split('/')[-1][:-4])
+            with open(mfn, 'wb') as f:
+                pickle.dump(target_idxs, f)

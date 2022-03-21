@@ -16,6 +16,9 @@ parser.add_argument('--epoch', type=int, default=150, help='number of epochs')
 parser.add_argument('--output', type=str, default='', help='save predictions to files')
 args = parser.parse_args()
 
+if args.data == 'setup6':
+    args.num_snapshot = 100
+
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 

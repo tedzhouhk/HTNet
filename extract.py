@@ -15,6 +15,13 @@ for fn in os.listdir('output/'):
     if fn.startswith('setup{}_'.format(args.setup)) and fn.endswith('.pkl'):
         valid_fn[fn.split('_')[1].split('.')[0]] = pickle.load(open('output/{}'.format(fn), 'rb'))
 
+tot_throughput = 0
+tot_number = 0
+for key in valid_fn['sinr']:
+    tot_throughput += valid_fn['sinr'][key]['true'].sum()
+    tot_number += valid_fn['sinr'][key]['true'].shape[0]
+print('Average throughput: {:.2f}'.format(tot_throughput / tot_number))
+
 while True:
     data = defaultdict(list)
     first = True

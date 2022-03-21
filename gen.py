@@ -43,7 +43,7 @@ def check_ap_range(x, y, ap_pos):
     min_ap_r = float('inf')
     for c in ap_pos:
         r = ((x - ap_pos[c]['x']) ** 2 + (y - ap_pos[c]['y']) ** 2) ** 0.5
-        if r < ap_pos['r']:
+        if r < ap_pos[c]['r']:
             if r < min_ap_r:
                 min_ap_r = r
                 min_ap_c = c

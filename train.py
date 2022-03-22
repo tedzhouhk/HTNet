@@ -26,11 +26,14 @@ import torch
 import dgl
 import pickle
 import xgboost
+import time
 import numpy as np
 from minibatch import get_dataloader
 from model import NetModel
 from datetime import datetime
 from sklearn import linear_model
+
+t_inf = 0
 
 if not args.gbrt and not args.sinr:
     train_dataloader, valid_dataloader, test_dataloader = get_dataloader('data/{}/processed/'.format(args.data), args.batch_size, all_cuda=True)
@@ -40,9 +43,8 @@ if not args.gbrt and not args.sinr:
 
     def eval(model, dataloader, output=''):
         if output != '':
-            if not os.path.exists('output'):
-                os.mkdir('output')
             output_fn = 'output/{}.pkl'.format(output)
+            os.makedirs(os.path.dirname(output_fn))
             outs = dict()
         model.eval()
         rmse = list()
@@ -129,9 +131,8 @@ elif args.gbrt:
     true = torch.from_numpy(test_y)
     rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
     if args.output != '':
-        if not os.path.exists('output'):
-            os.mkdir('output')
         output_fn = 'output/{}.pkl'.format(args.output)
+        os.makedirs(os.path.dirname(output_fn))
         outs = dict()
         s_idx = 0
         e_idx = 0
@@ -175,9 +176,8 @@ elif args.sinr:
     true = torch.from_numpy(test_y)
     rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
     if args.output != '':
-        if not os.path.exists('output'):
-            os.mkdir('output')
         output_fn = 'output/{}.pkl'.format(args.output)
+        os.makedirs(os.path.dirname(output_fn))
         outs = dict()
         s_idx = 0
         e_idx = 0

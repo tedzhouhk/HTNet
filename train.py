@@ -42,6 +42,7 @@ if not args.gbrt and not args.sinr:
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     def eval(model, dataloader, output=''):
+        global t_inf
         if output != '':
             output_fn = 'output/{}.pkl'.format(output)
             os.makedirs(os.path.dirname(output_fn))
@@ -51,6 +52,7 @@ if not args.gbrt and not args.sinr:
         rmse_tot = 0
         with torch.no_grad():
             for g, idx in dataloader:
+                t_s = time.time()
                 g = g.to('cuda')
                 mask = g.nodes['sta'].data['mask'] > 0
                 pred = model(g)[mask]
@@ -58,6 +60,7 @@ if not args.gbrt and not args.sinr:
                 loss = torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8)
                 rmse.append(float(loss) * pred.shape[0])
                 rmse_tot += pred.shape[0]
+                t_inf += time.time() - t_s
                 if output != '':
                     out = {'pred':pred.cpu().detach().numpy(), 'true':true.cpu().detach().numpy()}
                     outs[int(idx)] = out
@@ -126,7 +129,9 @@ elif args.gbrt:
     test_y = np.concatenate(test_y, axis=None)
     
     model = xgboost.XGBRegressor(max_depth=4, n_estimators=100)
+    t_s = time.time()
     model.fit(train_x, train_y)
+    t_inf += time.time() - t_s
     pred = torch.from_numpy(model.predict(test_x))
     true = torch.from_numpy(test_y)
     rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
@@ -171,7 +176,9 @@ elif args.sinr:
     test_y = np.concatenate(test_y, axis=None)
     
     model = linear_model.LinearRegression()
+    t_s = time.time()
     model.fit(train_x, train_y)
+    t_inf += time.time() - t_s
     pred = torch.from_numpy(model.predict(test_x))
     true = torch.from_numpy(test_y)
     rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
@@ -189,3 +196,4 @@ elif args.sinr:
         with open(output_fn, 'wb') as f:
             pickle.dump(outs, f)
     print('Test RMSE: {:.4f}'.format(rmse))
+print('Inference time per sequence: {:.4f}ms'.format(t_inf * 1000 / test_dataloader.__len__()))

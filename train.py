@@ -45,7 +45,8 @@ if not args.gbrt and not args.sinr:
         global t_inf
         if output != '':
             output_fn = 'output/{}.pkl'.format(output)
-            os.makedirs(os.path.dirname(output_fn))
+            if not os.path.exists(output_fn):
+                os.makedirs(os.path.dirname(output_fn))
             outs = dict()
         model.eval()
         rmse = list()
@@ -137,7 +138,8 @@ elif args.gbrt:
     rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
     if args.output != '':
         output_fn = 'output/{}.pkl'.format(args.output)
-        os.makedirs(os.path.dirname(output_fn))
+        if not os.path.exists(output_fn):
+            os.makedirs(os.path.dirname(output_fn))
         outs = dict()
         s_idx = 0
         e_idx = 0
@@ -184,7 +186,8 @@ elif args.sinr:
     rmse = float(torch.sqrt(torch.nn.functional.mse_loss(pred, true) + 1e-8))
     if args.output != '':
         output_fn = 'output/{}.pkl'.format(args.output)
-        os.makedirs(os.path.dirname(output_fn))
+        if not os.path.exists(output_fn):
+            os.makedirs(os.path.dirname(output_fn))
         outs = dict()
         s_idx = 0
         e_idx = 0

@@ -22,7 +22,7 @@ do
         wait -n
     fi
     # GNN+LSTM
-    (python train.py --layer $l --data $1 --graph --dynamic --gpu $2 | /usr/bin/tee -a output/layer/runtime.out) &
+    (python train.py --layer $l --data $1 --graph --dynamic --gpu $2 | /usr/bin/tee -a output/layer/$1/gnn+lstm_$l.out) &
 
     if [ $(jobs -r | wc -l) -ge 3 ]; 
     then

@@ -10,6 +10,9 @@ parser.add_argument('--setup', type=int, help='which setup to simulate')
 parser.add_argument('--num_snapshot', type=int, default=10, help='number of snapshots in each sequence')
 args = parser.parse_args()
 
+if args.setup == 6:
+    args.num_snapshot = 100
+
 valid_fn = dict()
 for fn in os.listdir('output/main/'):
     if fn.startswith('setup{}_'.format(args.setup)) and fn.endswith('.pkl'):

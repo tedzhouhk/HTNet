@@ -4,6 +4,9 @@ parser.add_argument('--data', type=str, help='which dataset to use')
 parser.add_argument('--num_snapshot', type=int, default=10, help='number of snapshot')
 args = parser.parse_args()
 
+if args.data == 'setup6':
+    args.num_snapshot = 100
+
 import torch
 from minibatch import get_dataloader
 from itertools import chain
@@ -21,6 +24,7 @@ for g, _ in chain(train_dataloader, valid_dataloader, test_dataloader):
 
 throughput_sta = torch.stack(throughput_sta)
 print(torch.std(throughput_sta, dim=0))
+print(torch.std(throughput_sta))
 # avg_throughput = throughput_sta / tot_sta
 
 # print('Average throughput: {:.2f}'.format(avg_throughput.mean()))

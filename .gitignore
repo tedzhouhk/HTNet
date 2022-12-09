@@ -1,4 +1,6 @@
 data/*
+data.zip
+data_dev/*
 ITU/*
 models/02-21-16:54:42.pkl
 *.pyc

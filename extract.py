@@ -10,10 +10,13 @@ parser.add_argument('--setup', type=int, help='which setup to simulate')
 parser.add_argument('--num_snapshot', type=int, default=10, help='number of snapshots in each sequence')
 args = parser.parse_args()
 
+if args.setup == 6:
+    args.num_snapshot = 100
+
 valid_fn = dict()
-for fn in os.listdir('output/'):
+for fn in os.listdir('output/main/'):
     if fn.startswith('setup{}_'.format(args.setup)) and fn.endswith('.pkl'):
-        valid_fn[fn.split('_')[1].split('.')[0]] = pickle.load(open('output/{}'.format(fn), 'rb'))
+        valid_fn[fn.split('_')[1].split('.')[0]] = pickle.load(open('output/main/{}'.format(fn), 'rb'))
 
 tot_throughput = 0
 tot_number = 0

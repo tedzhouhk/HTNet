@@ -12,7 +12,7 @@ Older versions may also work but are not tested.
 
 # Dataset
 
-All six setups can be downloaded on [Google Drive Link])(https://drive.google.com/file/d/1WYEVhmN4RgpLh2tGQ3A-LBQIKHjIO_q5/view?usp=sharing). After downloading, unzip the file and copy them to */data/* folder. The file structure should be 
+All six setups can be downloaded on this [Google Drive Link](https://drive.google.com/file/d/1WYEVhmN4RgpLh2tGQ3A-LBQIKHjIO_q5/view?usp=sharing). After downloading, unzip the file and copy them to */data/* folder. The file structure should be 
 
 ```
 ├── data
